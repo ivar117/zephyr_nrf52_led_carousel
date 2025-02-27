@@ -10,8 +10,7 @@
 
 #define BLINK_TIME        500 /* LED blink time */
 
-#define CLOCKWISE         1
-#define COUNTERCLOCKWISE  0
+enum blink_direction {COUNTERCLOCKWISE, CLOCKWISE};
 
 // Define buttons 1 and 2 as LEDs direction control buttons.
 static const struct gpio_dt_spec direction_control_buttons[] = {
@@ -20,7 +19,7 @@ static const struct gpio_dt_spec direction_control_buttons[] = {
 };
 
 /* Onboard LEDs 1-4.
-* Ordered as 1-2, 4-3 so that the LEDs go in a circle.
+* Ordered as 1-2, 4-3 so that the LEDs are arranged sequentially.
 */
 static struct gpio_dt_spec gpio_leds[] = {
     GPIO_DT_SPEC_GET_OR(DT_ALIAS(led0), gpios, {0}),
@@ -31,7 +30,8 @@ static struct gpio_dt_spec gpio_leds[] = {
 
 static struct gpio_callback button_cb_data;
 
-int led_direction = CLOCKWISE;
+// The direction the LEDs are blinking in.
+static enum blink_direction leds_blink_direction = CLOCKWISE;
 
 void
 button_pressed(const struct device *dev, struct gpio_callback *cb,
@@ -40,11 +40,11 @@ button_pressed(const struct device *dev, struct gpio_callback *cb,
     // Set the direction the LEDs are going in based on the button that is pressed.
     if (pins & BIT(direction_control_buttons[0].pin)) {
         printk("Button 1 pressed\n");
-        led_direction = COUNTERCLOCKWISE;
+        leds_blink_direction = COUNTERCLOCKWISE;
     }
     else {
         printk("Button 2 pressed\n");
-        led_direction = CLOCKWISE;
+        leds_blink_direction = CLOCKWISE;
     }
 }
 
@@ -124,12 +124,12 @@ main(void)
         k_msleep(BLINK_TIME);
         gpio_pin_set_dt(&gpio_leds[i], 0);
 
-        if (led_direction == CLOCKWISE) {
+        if (leds_blink_direction == CLOCKWISE) {
             i++;
             if (i > LEN(gpio_leds)-1)
                 i = 0;
         }
-        else if (led_direction == COUNTERCLOCKWISE) {
+        else if (leds_blink_direction == COUNTERCLOCKWISE) {
             i--;
             if (i < 0)
                 i = LEN(gpio_leds) - 1;
